@@ -1,0 +1,6 @@
+        game.StarterGui:SetCore("SendNotification",{
+            Title = " gib passwort in chat ein (Nigger) ",
+            Text = "Leck ei: " .. tostring(Active),
+            Icon = "",
+            Duration = 200
+        })
