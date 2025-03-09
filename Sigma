@@ -1,6 +1,6 @@
         game.StarterGui:SetCore("SendNotification",{
-            Title = " FinobeWare.Desync ",
-            Text = "Active: " .. tostring(Active),
+            Title = " gib passwort in chat ein (Nigger) ",
+            Text = "Leck ei: " .. tostring(Active),
             Icon = "",
             Duration = 200
         })
