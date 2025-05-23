@@ -1,0 +1,100 @@
+local function applyChams(model)
+    if not model:FindFirstChild("Root") then return end
+    if model:FindFirstChild("Chams") then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Chams"
+    highlight.Adornee = model
+    highlight.FillColor = highlightColor
+    highlight.OutlineColor = highlightColor
+    highlight.FillTransparency = fillTransparency
+    highlight.OutlineTransparency = outlineTransparency
+    highlight.Parent = model
+end
+
+
+for _, model in ipairs(workspace:GetChildren()) do
+    if model:IsA("Model") and model.Name == "Male" then
+        applyChams(model)
+    end
+end
+
+
+workspace.ChildAdded:Connect(function(child)
+    if child:IsA("Model") and child.Name == "Male" then
+        repeat task.wait() until child:FindFirstChild("Root")
+        applyChams(child)
+    end
+end)
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local camera = workspace.CurrentCamera
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Radius = FOV_RADIUS
+fovCircle.Thickness = 2
+fovCircle.Transparency = 1
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Filled = false
+fovCircle.Visible = true
+
+RunService.RenderStepped:Connect(function()
+	if camera then
+		local size = camera.ViewportSize
+		fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
+		fovCircle.Radius = FOV_RADIUS
+	end
+end)
+
+local function getTargetPart()
+	local camera = workspace.CurrentCamera
+	local closestPart = nil
+	local closestDist = math.huge
+	local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+	for _, model in ipairs(workspace:GetChildren()) do
+		if model:IsA("Model") then
+			local root = model:FindFirstChild("Root")
+			local aimPart = model:FindFirstChild(aimPartName)
+			if root and aimPart and aimPart:IsA("BasePart") then
+				local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+					if dist < FOV_RADIUS and dist < closestDist then
+						closestDist = dist
+						closestPart = aimPart
+					end
+				end
+			end
+		end
+	end
+
+	return closestPart
+end
+
+local function aimAtTarget()
+	local targetPart = getTargetPart()
+	if not targetPart then return end
+
+	local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
+	local predictedPos = targetPart.Position + velocity * prediction
+
+	local screenPoint, onScreen = camera:WorldToViewportPoint(predictedPos)
+	if not onScreen then return end
+
+	local mousePos = UserInputService:GetMouseLocation()
+	local dx = screenPoint.X - mousePos.X
+	local dy = screenPoint.Y - mousePos.Y
+	mousemoverel(dx * smoothness, dy * smoothness)
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if not gp and input.KeyCode == Enum.KeyCode.J then
+		aiming = not aiming
+		if aiming then
+			RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
+		else
+			RunService:UnbindFromRenderStep(stepName)
+		end
+	end
+end)
