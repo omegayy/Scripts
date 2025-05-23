@@ -1,4 +1,16 @@
-local Settings = _G.Settings
+local Settings = _G.Settings or {
+    -- fallback defaults in case _G.Settings isn't set
+    aiming = false,
+    stepName = "MouseAimFOV",
+    FOV_RADIUS = 90,
+    smoothness = 0.5,
+    prediction = 0.11,
+    aimPartName = "Head",
+    OutlineColor = Color3.fromRGB(255, 105, 180),
+    FillColor = Color3.fromRGB(255, 255, 255),
+    fillTransparency = 0.8,
+    outlineTransparency = 0,
+}
 
 local function applyChams(model)
     if not model:FindFirstChild("Root") then return end
