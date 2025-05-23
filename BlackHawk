@@ -4,8 +4,8 @@ local function applyChams(model)
     local highlight = Instance.new("Highlight")
     highlight.Name = "Chams"
     highlight.Adornee = model
-    highlight.FillColor = highlightColor
-    highlight.OutlineColor = highlightColor
+    highlight.FillColor = FillColor
+    highlight.OutlineColor = OutlineColor
     highlight.FillTransparency = fillTransparency
     highlight.OutlineTransparency = outlineTransparency
     highlight.Parent = model
