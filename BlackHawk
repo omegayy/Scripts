@@ -1,17 +1,3 @@
-local Settings = _G.Settings or {
-    -- fallback defaults in case _G.Settings isn't set
-    aiming = false,
-    stepName = "MouseAimFOV",
-    FOV_RADIUS = 90,
-    smoothness = 0.5,
-    prediction = 0.11,
-    aimPartName = "Head",
-    OutlineColor = Color3.fromRGB(255, 105, 180),
-    FillColor = Color3.fromRGB(255, 255, 255),
-    fillTransparency = 0.8,
-    outlineTransparency = 0,
-}
-
 local function applyChams(model)
     if not model:FindFirstChild("Root") then return end
     if model:FindFirstChild("Chams") then return end
@@ -51,62 +37,62 @@ fovCircle.Filled = false
 fovCircle.Visible = true
 
 RunService.RenderStepped:Connect(function()
-	if camera then
-		local size = camera.ViewportSize
-		fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
-		fovCircle.Radius = Settings.FOV_RADIUS
-	end
+    if camera then
+        local size = camera.ViewportSize
+        fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
+        fovCircle.Radius = Settings.FOV_RADIUS
+    end
 end)
 
 local function getTargetPart()
-	local camera = workspace.CurrentCamera
-	local closestPart = nil
-	local closestDist = math.huge
-	local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    local camera = workspace.CurrentCamera
+    local closestPart = nil
+    local closestDist = math.huge
+    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-	for _, model in ipairs(workspace:GetChildren()) do
-		if model:IsA("Model") then
-			local root = model:FindFirstChild("Root")
-			local aimPart = model:FindFirstChild(Settings.aimPartName)
-			if root and aimPart and aimPart:IsA("BasePart") then
-				local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
-				if onScreen then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-					if dist < Settings.FOV_RADIUS and dist < closestDist then
-						closestDist = dist
-						closestPart = aimPart
-					end
-				end
-			end
-		end
-	end
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") then
+            local root = model:FindFirstChild("Root")
+            local aimPart = model:FindFirstChild(Settings.aimPartName)
+            if root and aimPart and aimPart:IsA("BasePart") then
+                local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    if dist < Settings.FOV_RADIUS and dist < closestDist then
+                        closestDist = dist
+                        closestPart = aimPart
+                    end
+                end
+            end
+        end
+    end
 
-	return closestPart
+    return closestPart
 end
 
 local function aimAtTarget()
-	local targetPart = getTargetPart()
-	if not targetPart then return end
+    local targetPart = getTargetPart()
+    if not targetPart then return end
 
-	local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
-	local predictedPos = targetPart.Position + velocity * Settings.prediction
+    local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
+    local predictedPos = targetPart.Position + velocity * Settings.prediction
 
-	local screenPoint, onScreen = camera:WorldToViewportPoint(predictedPos)
-	if not onScreen then return end
+    local screenPoint, onScreen = camera:WorldToViewportPoint(predictedPos)
+    if not onScreen then return end
 
-	local mousePos = UserInputService:GetMouseLocation()
-	local dx = screenPoint.X - mousePos.X
-	local dy = screenPoint.Y - mousePos.Y
-	mousemoverel(dx * Settings.smoothness, dy * Settings.smoothness)
+    local mousePos = UserInputService:GetMouseLocation()
+    local dx = screenPoint.X - mousePos.X
+    local dy = screenPoint.Y - mousePos.Y
+    mousemoverel(dx * Settings.smoothness, dy * Settings.smoothness)
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
-	if not gp and input.KeyCode == Enum.KeyCode.J then
-		Settings.aiming = not Settings.aiming
-		if Settings.aiming then
-			RunService:BindToRenderStep(Settings.stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
-		else
-			RunService:UnbindFromRenderStep(Settings.stepName)
-		end
-	end
+    if not gp and input.KeyCode == Enum.KeyCode.J then
+        Settings.aiming = not Settings.aiming
+        if Settings.aiming then
+            RunService:BindToRenderStep(Settings.stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
+        else
+            RunService:UnbindFromRenderStep(Settings.stepName)
+        end
+    end
 end)
