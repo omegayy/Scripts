@@ -1,3 +1,5 @@
+local Settings = _G.Settings
+
 local function applyChams(model)
     if not model:FindFirstChild("Root") then return end
     if model:FindFirstChild("Chams") then return end
