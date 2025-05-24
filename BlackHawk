@@ -106,7 +106,8 @@ local function aimAtTarget(dt)
         local distance = (camera.CFrame.Position - targetPart.Position).Magnitude
         local distanceFactor = math.clamp(distance / Settings.referenceDistance, 1, 3)
         local effectiveRecoilSpeed = Settings.recoilSpeed * distanceFactor * Settings.smoothness
-        recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, Settings.maxRecoil)
+        local scaledMaxRecoil = math.clamp(Settings.maxRecoil * distanceFactor, Settings.maxRecoil, Settings.maxRecoil * 3)
+        recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, scaledMaxRecoil)
     else
         recoilTime = 0
     end
