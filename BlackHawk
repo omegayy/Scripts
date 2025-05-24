@@ -10,9 +10,11 @@ local aiming = false
 local stepName = "MouseAimFOV"
 local recoilTime = 0
 
+local lastTriggerShotTime = 0
+
 local function notify(text)
     StarterGui:SetCore("SendNotification", {
-        Title = "Script Notification";
+        Title = "Spectre";
         Text = text;
         Duration = 0.5;
     })
@@ -147,6 +149,8 @@ end
 
 local function triggerBot()
     if not Settings.triggerbotEnabled then return end
+    local now = tick()
+    if now - lastTriggerShotTime < Settings.triggerbotDelay then return end
     local mousePos = UserInputService:GetMouseLocation()
     local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
     local rayParams = RaycastParams.new()
@@ -157,6 +161,7 @@ local function triggerBot()
         for _, partName in ipairs(Settings.triggerPartNames) do
             if result.Instance.Name == partName then
                 mouse1click()
+                lastTriggerShotTime = now
                 break
             end
         end
