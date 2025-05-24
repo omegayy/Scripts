@@ -135,19 +135,26 @@ local function aimAtTarget(dt)
     local mousePos = UserInputService:GetMouseLocation()
     local dx = screenPoint.X - mousePos.X
     local dy = screenPoint.Y - mousePos.Y
+
     if mb1Held then
         recoilTime += dt
+
         local distance = (camera.CFrame.Position - targetPart.Position).Magnitude
         local distanceFactor = math.clamp(distance / Settings.referenceDistance, 1, 3)
+
         local effectiveRecoilSpeed = Settings.recoilSpeed * distanceFactor * Settings.smoothness
-        local scaledMaxRecoil = math.clamp(Settings.maxRecoil * distanceFactor, Settings.maxRecoil, Settings.maxRecoil * 3)
-        local recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, scaledMaxRecoil)
+        local maxAllowedRecoil = math.clamp(Settings.maxRecoil * distanceFactor, Settings.maxRecoil, Settings.maxRecoil * 3)
+
+        local recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, maxAllowedRecoil)
+
         dy += recoilOffset
     else
         recoilTime = 0
     end
+
     dx = math.clamp(dx, -100, 100)
     dy = math.clamp(dy, -100, 100)
+
     mousemoverel(dx * Settings.smoothness, dy * Settings.smoothness)
 end
 
