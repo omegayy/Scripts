@@ -194,13 +194,22 @@ local function triggerBot()
     end
 end
 
-RunService.RenderStepped:Connect(function(dt)
-    triggerBot()
-
+local function setZoom()
     if zoomed then
         camera.FieldOfView = originalFOV * Settings.ZoomAmplifier
     else
         camera.FieldOfView = originalFOV
+    end
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    triggerBot()
+    setZoom()
+end)
+
+camera:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+    if zoomed and camera.FieldOfView ~= originalFOV * Settings.ZoomAmplifier then
+        setZoom()
     end
 end)
 
@@ -224,6 +233,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
             notify("Triggerbot: " .. (triggerbotEnabled and "ON" or "OFF"))
         elseif input.KeyCode == Settings.ZoomKey then
             zoomed = not zoomed
+            setZoom()
         end
     end
 end)
