@@ -147,11 +147,7 @@ local function aimAtTarget(dt)
 end
 
 local function triggerBot()
-    if not Settings.triggerbotEnabled then
-        hovering = false
-        hoverStartTime = nil
-        return
-    end
+    if not Settings.triggerbotEnabled then return end
 
     local now = tick()
     local mousePos = UserInputService:GetMouseLocation()
@@ -209,18 +205,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
                 mb1Held = false
                 recoilTime = 0
             end
-            notify("Aimbot " .. (aiming and "Enabled" or "Disabled"))
-        elseif input.KeyCode == Settings.TriggerKey then
-            if not Settings.triggerbotEnabled then return end
-            Settings.triggerbotEnabled = not Settings.triggerbotEnabled
-            notify("Triggerbot " .. (Settings.triggerbotEnabled and "Enabled" or "Disabled"))
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gp)
-    if not gp and input.UserInputType == Enum.UserInputType.MouseButton1 then
-        mb1Held = false
-        recoilTime = 0
-    end
-end)
+           
