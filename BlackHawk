@@ -4,6 +4,8 @@ local camera = workspace.CurrentCamera
 
 local lockedTarget = nil
 local mb1Held = false
+local aiming = false
+local stepName = "MouseAimFOV"
 local recoilTime = 0
 
 local function applyChams(model)
@@ -35,8 +37,8 @@ end)
 local fovCircle = Drawing.new("Circle")
 fovCircle.Radius = Settings.FOV_RADIUS
 fovCircle.Thickness = 2
-fovCircle.Transparency = 1
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Transparency = Settings.fovTransparency
+fovCircle.Color = Settings.fovColor
 fovCircle.Filled = false
 fovCircle.Visible = true
 
@@ -56,8 +58,22 @@ local function isValidTarget(part)
     return true
 end
 
+local function canSee(part)
+    if not Settings.aimbotWallCheck then return true end
+    local origin = camera.CFrame.Position
+    local direction = (part.Position - origin)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {camera, part.Parent}
+    local raycastResult = workspace:Raycast(origin, direction, rayParams)
+    if raycastResult then
+        return raycastResult.Instance:IsDescendantOf(part.Parent)
+    end
+    return true
+end
+
 local function getTargetPart()
-    if lockedTarget and isValidTarget(lockedTarget) then
+    if lockedTarget and isValidTarget(lockedTarget) and canSee(lockedTarget) then
         return lockedTarget
     else
         lockedTarget = nil
@@ -69,7 +85,7 @@ local function getTargetPart()
         if model:IsA("Model") then
             local root = model:FindFirstChild("Root")
             local aimPart = model:FindFirstChild(Settings.aimPartName)
-            if root and aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) then
+            if root and aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
                 local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
                 local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
                 if dist < closestDist then
@@ -84,48 +100,60 @@ local function getTargetPart()
 end
 
 local function aimAtTarget(dt)
+    if not Settings.aimbotEnabled or not aiming then return end
     local targetPart = getTargetPart()
     if not targetPart then return end
-
-    local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
-    local speed = velocity.Magnitude
     local predictedPos = targetPart.Position
-    if speed > 0.05 then
-        predictedPos = targetPart.Position + velocity * Settings.prediction
+    local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
+    if velocity.Magnitude > 0.05 then
+        predictedPos += velocity * Settings.prediction
     end
-
     local screenPoint, onScreen = camera:WorldToViewportPoint(predictedPos)
     if not onScreen then return end
-
     local mousePos = UserInputService:GetMouseLocation()
     local dx = screenPoint.X - mousePos.X
-
-    local recoilOffset = 0
+    local dy = screenPoint.Y - mousePos.Y
     if mb1Held then
-        recoilTime = recoilTime + dt
+        recoilTime += dt
         local distance = (camera.CFrame.Position - targetPart.Position).Magnitude
         local distanceFactor = math.clamp(distance / Settings.referenceDistance, 1, 3)
         local effectiveRecoilSpeed = Settings.recoilSpeed * distanceFactor * Settings.smoothness
         local scaledMaxRecoil = math.clamp(Settings.maxRecoil * distanceFactor, Settings.maxRecoil, Settings.maxRecoil * 3)
-        recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, scaledMaxRecoil)
+        local recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, scaledMaxRecoil)
+        dy += recoilOffset
     else
         recoilTime = 0
     end
-
-    local dy = (screenPoint.Y - mousePos.Y) + recoilOffset
+    dx = math.clamp(dx, -100, 100)
+    dy = math.clamp(dy, -100, 100)
     mousemoverel(dx * Settings.smoothness, dy * Settings.smoothness)
 end
+
+local function triggerBot()
+    if not Settings.triggerbotEnabled then return end
+    local mousePos = UserInputService:GetMouseLocation()
+    local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {camera}
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, rayParams)
+    if result and result.Instance and result.Instance.Name == Settings.triggerPartName then
+        mouse1click()
+    end
+end
+
+RunService.RenderStepped:Connect(triggerBot)
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp then
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             mb1Held = true
         elseif input.KeyCode == Settings.AimKey then
-            Settings.aiming = not Settings.aiming
-            if Settings.aiming then
-                RunService:BindToRenderStep(Settings.stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
+            aiming = not aiming
+            if aiming then
+                RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
             else
-                RunService:UnbindFromRenderStep(Settings.stepName)
+                RunService:UnbindFromRenderStep(stepName)
                 lockedTarget = nil
                 mb1Held = false
                 recoilTime = 0
