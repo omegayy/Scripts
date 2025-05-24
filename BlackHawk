@@ -1,5 +1,6 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui") -- For notifications
 local camera = workspace.CurrentCamera
 
 local lockedTarget = nil
@@ -7,6 +8,14 @@ local mb1Held = false
 local aiming = false
 local stepName = "MouseAimFOV"
 local recoilTime = 0
+
+local function notify(text)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Script Notification";
+        Text = text;
+        Duration = 0.5;
+    })
+end
 
 local function applyChams(model)
     if not model:FindFirstChild("Root") then return end
@@ -145,25 +154,31 @@ end
 RunService.RenderStepped:Connect(triggerBot)
 
 UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp then
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            mb1Held = true
-        elseif input.KeyCode == Settings.AimKey then
-            aiming = not aiming
-            if aiming then
-                RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
-            else
-                RunService:UnbindFromRenderStep(stepName)
-                lockedTarget = nil
-                mb1Held = false
-                recoilTime = 0
-            end
+    if gp then return end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mb1Held = true
+    elseif input.KeyCode == Settings.AimKey then
+        aiming = not aiming
+        Settings.aimbotEnabled = aiming
+        if aiming then
+            RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
+        else
+            RunService:UnbindFromRenderStep(stepName)
+            lockedTarget = nil
+            mb1Held = false
+            recoilTime = 0
         end
+        notify("Aimbot " .. (aiming and "Enabled" or "Disabled"))
+    elseif input.KeyCode == Settings.TriggerKey then
+        Settings.triggerbotEnabled = not Settings.triggerbotEnabled
+        notify("Triggerbot " .. (Settings.triggerbotEnabled and "Enabled" or "Disabled"))
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gp)
-    if not gp and input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         mb1Held = false
         recoilTime = 0
     end
