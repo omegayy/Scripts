@@ -4,13 +4,14 @@ local StarterGui = game:GetService("StarterGui")
 local camera = workspace.CurrentCamera
 
 local lockedTarget = nil
-local lockedPart = nil
 local mb1Held = false
 local aiming = false
 local stepName = "MouseAimFOV"
 local recoilTime = 0
 
-local lastTriggerShotTime = 0
+local lastTriggerTime = 0
+local hoverStartTime = nil
+local hovering = false
 
 local function notify(text)
     StarterGui:SetCore("SendNotification", {
@@ -85,11 +86,10 @@ local function canSee(part)
 end
 
 local function getTargetPart()
-    if lockedTarget and lockedPart and isValidTarget(lockedPart) and canSee(lockedPart) then
-        return lockedPart
+    if lockedTarget and isValidTarget(lockedTarget) and canSee(lockedTarget) then
+        return lockedTarget
     else
         lockedTarget = nil
-        lockedPart = nil
     end
     local closestPart = nil
     local closestDist = math.huge
@@ -106,15 +106,14 @@ local function getTargetPart()
                         if dist < closestDist then
                             closestDist = dist
                             closestPart = aimPart
-                            lockedTarget = model
                         end
                     end
                 end
             end
         end
     end
-    lockedPart = closestPart
-    return lockedPart
+    lockedTarget = closestPart
+    return lockedTarget
 end
 
 local function aimAtTarget(dt)
@@ -148,55 +147,79 @@ local function aimAtTarget(dt)
 end
 
 local function triggerBot()
-    if not Settings.triggerbotEnabled then return end
+    if not Settings.triggerbotEnabled then
+        hovering = false
+        hoverStartTime = nil
+        return
+    end
+
     local now = tick()
-    if now - lastTriggerShotTime < Settings.triggerbotDelay then return end
     local mousePos = UserInputService:GetMouseLocation()
     local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {camera}
     local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, rayParams)
+
     if result and result.Instance then
+        local hitPartName = result.Instance.Name
+        local canShoot = false
         for _, partName in ipairs(Settings.triggerPartNames) do
-            if result.Instance.Name == partName then
-                mouse1click()
-                lastTriggerShotTime = now
+            if hitPartName == partName then
+                canShoot = true
                 break
             end
         end
+
+        if canShoot then
+            if not hovering then
+                hovering = true
+                hoverStartTime = now
+            end
+
+            if now - hoverStartTime >= Settings.triggerbotDelayBeforeShooting then
+                if now - lastTriggerTime >= Settings.triggerbotDelayBetweenShots then
+                    mouse1click()
+                    lastTriggerTime = now
+                end
+            end
+        else
+            hovering = false
+            hoverStartTime = nil
+        end
+    else
+        hovering = false
+        hoverStartTime = nil
     end
 end
 
 RunService.RenderStepped:Connect(triggerBot)
 
 UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        mb1Held = true
-    elseif input.KeyCode == Settings.AimKey then
-        aiming = not aiming
-        Settings.aimbotEnabled = aiming
-        if aiming then
-            RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
-        else
-            RunService:UnbindFromRenderStep(stepName)
-            lockedTarget = nil
-            lockedPart = nil
-            mb1Held = false
-            recoilTime = 0
+    if not gp then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            mb1Held = true
+        elseif input.KeyCode == Settings.AimKey then
+            aiming = not aiming
+            if aiming then
+                RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
+            else
+                RunService:UnbindFromRenderStep(stepName)
+                lockedTarget = nil
+                mb1Held = false
+                recoilTime = 0
+            end
+            notify("Aimbot " .. (aiming and "Enabled" or "Disabled"))
+        elseif input.KeyCode == Settings.TriggerKey then
+            if not Settings.triggerbotEnabled then return end
+            Settings.triggerbotEnabled = not Settings.triggerbotEnabled
+            notify("Triggerbot " .. (Settings.triggerbotEnabled and "Enabled" or "Disabled"))
         end
-        notify("Aimbot " .. (aiming and "Enabled" or "Disabled"))
-    elseif input.KeyCode == Settings.TriggerKey then
-        Settings.triggerbotEnabled = not Settings.triggerbotEnabled
-        notify("Triggerbot " .. (Settings.triggerbotEnabled and "Enabled" or "Disabled"))
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if not gp and input.UserInputType == Enum.UserInputType.MouseButton1 then
         mb1Held = false
         recoilTime = 0
     end
