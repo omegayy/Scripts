@@ -1,3 +1,5 @@
+local triggerbotEnabled = false
+
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
@@ -147,7 +149,7 @@ local function aimAtTarget(dt)
 end
 
 local function triggerBot()
-    if not Settings.triggerbotEnabled then return end
+    if not triggerbotEnabled then return end
 
     local now = tick()
     local mousePos = UserInputService:GetMouseLocation()
@@ -205,4 +207,15 @@ UserInputService.InputBegan:Connect(function(input, gp)
                 mb1Held = false
                 recoilTime = 0
             end
-           
+        elseif input.KeyCode == Settings.TriggerKey then
+            triggerbotEnabled = not triggerbotEnabled
+            notify("Triggerbot: " .. (triggerbotEnabled and "ON" or "OFF"))
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if not gp and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mb1Held = false
+    end
+end)
