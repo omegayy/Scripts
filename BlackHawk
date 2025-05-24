@@ -1,9 +1,10 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui") -- For notifications
+local StarterGui = game:GetService("StarterGui")
 local camera = workspace.CurrentCamera
 
 local lockedTarget = nil
+local lockedPart = nil
 local mb1Held = false
 local aiming = false
 local stepName = "MouseAimFOV"
@@ -82,10 +83,11 @@ local function canSee(part)
 end
 
 local function getTargetPart()
-    if lockedTarget and isValidTarget(lockedTarget) and canSee(lockedTarget) then
-        return lockedTarget
+    if lockedTarget and lockedPart and isValidTarget(lockedPart) and canSee(lockedPart) then
+        return lockedPart
     else
         lockedTarget = nil
+        lockedPart = nil
     end
     local closestPart = nil
     local closestDist = math.huge
@@ -93,19 +95,24 @@ local function getTargetPart()
     for _, model in ipairs(workspace:GetChildren()) do
         if model:IsA("Model") then
             local root = model:FindFirstChild("Root")
-            local aimPart = model:FindFirstChild(Settings.aimPartName)
-            if root and aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
-                local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
-                local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closestPart = aimPart
+            if root then
+                for _, partName in ipairs(Settings.aimPartNames) do
+                    local aimPart = model:FindFirstChild(partName)
+                    if aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
+                        local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                        if dist < closestDist then
+                            closestDist = dist
+                            closestPart = aimPart
+                            lockedTarget = model
+                        end
+                    end
                 end
             end
         end
     end
-    lockedTarget = closestPart
-    return lockedTarget
+    lockedPart = closestPart
+    return lockedPart
 end
 
 local function aimAtTarget(dt)
@@ -146,8 +153,13 @@ local function triggerBot()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {camera}
     local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, rayParams)
-    if result and result.Instance and result.Instance.Name == Settings.triggerPartName then
-        mouse1click()
+    if result and result.Instance then
+        for _, partName in ipairs(Settings.triggerPartNames) do
+            if result.Instance.Name == partName then
+                mouse1click()
+                break
+            end
+        end
     end
 end
 
@@ -166,6 +178,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
         else
             RunService:UnbindFromRenderStep(stepName)
             lockedTarget = nil
+            lockedPart = nil
             mb1Held = false
             recoilTime = 0
         end
