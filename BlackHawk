@@ -15,6 +15,9 @@ local lastTriggerTime = 0
 local hoverStartTime = nil
 local hovering = false
 
+local zoomed = false
+local originalFOV = camera.FieldOfView
+
 local function notify(text)
     StarterGui:SetCore("SendNotification", {
         Title = "Spectre";
@@ -211,6 +214,9 @@ UserInputService.InputBegan:Connect(function(input, gp)
         elseif input.KeyCode == Settings.TriggerKey then
             triggerbotEnabled = not triggerbotEnabled
             notify("Triggerbot: " .. (triggerbotEnabled and "ON" or "OFF"))
+        elseif input.KeyCode == Settings.ZoomKey then
+            zoomed = not zoomed
+            camera.FieldOfView = zoomed and (originalFOV * Settings.ZoomAmplifier) or originalFOV
         end
     end
 end)
