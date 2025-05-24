@@ -199,6 +199,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
             mb1Held = true
         elseif input.KeyCode == Settings.AimKey then
             aiming = not aiming
+            notify("Aimbot: " .. (aiming and "ON" or "OFF"))
             if aiming then
                 RunService:BindToRenderStep(stepName, Enum.RenderPriority.Input.Value + 1, aimAtTarget)
             else
