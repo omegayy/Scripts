@@ -104,18 +104,15 @@ local function getTargetPart()
     local closestDist = math.huge
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     for _, model in ipairs(workspace:GetChildren()) do
-        if model:IsA("Model") then
-            local root = model:FindFirstChild("Root")
-            if root then
-                for _, partName in ipairs(getgenv().Settings.aimPartNames) do
-                    local aimPart = model:FindFirstChild(partName)
-                    if aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
-                        local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                        if dist < closestDist then
-                            closestDist = dist
-                            closestPart = aimPart
-                        end
+        if model:IsA("Model") and model.Name == "Male" then
+            for _, partName in ipairs(getgenv().Settings.aimPartNames) do
+                local aimPart = model:FindFirstChild(partName)
+                if aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
+                    local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closestPart = aimPart
                     end
                 end
             end
@@ -223,6 +220,40 @@ fovCircle.Color = getgenv().Settings.fovColor
 fovCircle.Filled = false
 fovCircle.Visible = true
 
+-- Helper function to reapply gun chams every frame, fixing vanish on respawn
+local function applyGunChams()
+    if getgenv().Settings.GunChamsEnabled then
+        -- Clear any parts that no longer exist
+        for part, _ in pairs(originalProperties) do
+            if not part or not part.Parent then
+                originalProperties[part] = nil
+            end
+        end
+        -- Apply chams to current gun parts
+        for _, part in ipairs(worldModel:GetDescendants()) do
+            if part:IsA("MeshPart") then
+                if not originalProperties[part] then
+                    originalProperties[part] = {
+                        Color = part.Color,
+                        Material = part.Material,
+                    }
+                end
+                part.Color = getgenv().Settings.GunChamsColor
+                part.Material = getgenv().Settings.GunChamsMaterial
+            end
+        end
+    else
+        -- Restore original gun parts properties when disabled
+        for part, props in pairs(originalProperties) do
+            if part and part.Parent then
+                part.Color = props.Color
+                part.Material = props.Material
+            end
+        end
+        originalProperties = {}
+    end
+end
+
 RunService.RenderStepped:Connect(function(dt)
     local size = camera.ViewportSize
     fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
@@ -237,30 +268,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if getgenv().Settings.GunChamsEnabled then
-        for _, part in ipairs(worldModel:GetDescendants()) do
-            if part:IsA("MeshPart") then
-                if not originalProperties[part] then
-                    originalProperties[part] = {
-                        Color = part.Color,
-                        Material = part.Material,
-                    }
-                end
-                if part.Color ~= getgenv().Settings.GunChamsColor or part.Material ~= getgenv().Settings.GunChamsMaterial then
-                    part.Color = getgenv().Settings.GunChamsColor
-                    part.Material = getgenv().Settings.GunChamsMaterial
-                end
-            end
-        end
-    else
-        for part, props in pairs(originalProperties) do
-            if part and part.Parent then
-                part.Color = props.Color
-                part.Material = props.Material
-            end
-        end
-        originalProperties = {}
-    end
+    applyGunChams()
 end)
 
 camera:GetPropertyChangedSignal("FieldOfView"):Connect(function()
