@@ -3,7 +3,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 local camera = workspace.CurrentCamera
-local worldModel = workspace.Camera.WorldModel
 
 local lockedTarget = nil
 local mb1Held = false
@@ -43,7 +42,6 @@ local function isPartVisible(part)
     end
 end
 
--- Updated visibility check for player chams: check any part visible
 local function isModelVisible(model)
     for _, descendant in ipairs(model:GetDescendants()) do
         if descendant:IsA("BasePart") then
@@ -115,7 +113,7 @@ local function getTargetPart()
     local closestDist = math.huge
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     for _, model in ipairs(workspace:GetChildren()) do
-        if model:IsA("Model") and model.Name == "Male" then -- only player models?
+        if model:IsA("Model") and model.Name == "Male" then
             local root = model:FindFirstChild("Root")
             if root then
                 for _, partName in ipairs(getgenv().Settings.aimPartNames) do
@@ -234,6 +232,8 @@ fovCircle.Color = getgenv().Settings.fovColor
 fovCircle.Filled = false
 fovCircle.Visible = true
 
+local gunChamsUpdateTimer = 0
+
 RunService.RenderStepped:Connect(function(dt)
     local size = camera.ViewportSize
     fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
@@ -248,29 +248,36 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if getgenv().Settings.GunChamsEnabled then
-        for _, part in ipairs(worldModel:GetDescendants()) do
-            if part:IsA("MeshPart") then
-                if not originalProperties[part] then
-                    originalProperties[part] = {
-                        Color = part.Color,
-                        Material = part.Material,
-                    }
-                end
-                if part.Color ~= getgenv().Settings.GunChamsColor or part.Material ~= getgenv().Settings.GunChamsMaterial then
-                    part.Color = getgenv().Settings.GunChamsColor
-                    part.Material = getgenv().Settings.GunChamsMaterial
+    gunChamsUpdateTimer += dt
+    if gunChamsUpdateTimer >= 0.1 then
+        gunChamsUpdateTimer = 0
+        if getgenv().Settings.GunChamsEnabled then
+            local currentWorldModel = workspace:FindFirstChild("Camera") and workspace.Camera:FindFirstChild("WorldModel")
+            if currentWorldModel then
+                for _, part in ipairs(currentWorldModel:GetDescendants()) do
+                    if part:IsA("MeshPart") then
+                        if not originalProperties[part] then
+                            originalProperties[part] = {
+                                Color = part.Color,
+                                Material = part.Material,
+                            }
+                        end
+                        if part.Color ~= getgenv().Settings.GunChamsColor or part.Material ~= getgenv().Settings.GunChamsMaterial then
+                            part.Color = getgenv().Settings.GunChamsColor
+                            part.Material = getgenv().Settings.GunChamsMaterial
+                        end
+                    end
                 end
             end
-        end
-    else
-        for part, props in pairs(originalProperties) do
-            if part and part.Parent then
-                part.Color = props.Color
-                part.Material = props.Material
+        else
+            for part, props in pairs(originalProperties) do
+                if part and part.Parent then
+                    part.Color = props.Color
+                    part.Material = props.Material
+                end
             end
+            originalProperties = {}
         end
-        originalProperties = {}
     end
 end)
 
