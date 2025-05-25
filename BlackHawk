@@ -1,9 +1,9 @@
 local triggerbotEnabled = false
-
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 local camera = workspace.CurrentCamera
+local worldModel = workspace.Camera.WorldModel
 
 local lockedTarget = nil
 local mb1Held = false
@@ -18,6 +18,9 @@ local hovering = false
 local zoomed = false
 local originalFOV = camera.FieldOfView
 
+local originalProperties = {}
+local playerChamsCache = {}
+
 local function notify(text)
     StarterGui:SetCore("SendNotification", {
         Title = "Spectre";
@@ -26,45 +29,46 @@ local function notify(text)
     })
 end
 
-local function applyChams(model)
+local function isPartVisible(part)
+    local origin = camera.CFrame.Position
+    local direction = part.Position - origin
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {camera, part.Parent}
+    local rayResult = workspace:Raycast(origin, direction, rayParams)
+    if rayResult then
+        return rayResult.Instance:IsDescendantOf(part.Parent)
+    else
+        return true
+    end
+end
+
+local function updatePlayerChams(model)
     if not model:FindFirstChild("Root") then return end
-    if model:FindFirstChild("Chams") then return end
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "Chams"
-    highlight.Adornee = model
-    highlight.FillColor = Settings.FillColor
-    highlight.OutlineColor = Settings.OutlineColor
-    highlight.FillTransparency = Settings.fillTransparency
-    highlight.OutlineTransparency = Settings.outlineTransparency
-    highlight.Parent = model
-end
 
-for _, model in ipairs(workspace:GetChildren()) do
-    if model:IsA("Model") and model.Name == "Male" then
-        applyChams(model)
+    local highlight = playerChamsCache[model]
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Name = "Chams"
+        highlight.Adornee = model
+        highlight.Parent = model
+        playerChamsCache[model] = highlight
     end
-end
 
-workspace.ChildAdded:Connect(function(child)
-    if child:IsA("Model") and child.Name == "Male" then
-        repeat task.wait() until child:FindFirstChild("Root")
-        applyChams(child)
+    local rootPart = model.Root
+    local visible = isPartVisible(rootPart)
+
+    if visible then
+        highlight.FillColor = getgenv().Settings.PlayerChamsVisibleColor
+        highlight.OutlineColor = getgenv().Settings.PlayerChamsVisibleColor
+    else
+        highlight.FillColor = getgenv().Settings.PlayerChamsInvisibleColor
+        highlight.OutlineColor = getgenv().Settings.PlayerChamsInvisibleColor
     end
-end)
 
-local fovCircle = Drawing.new("Circle")
-fovCircle.Radius = Settings.FOV_RADIUS
-fovCircle.Thickness = 2
-fovCircle.Transparency = Settings.fovTransparency
-fovCircle.Color = Settings.fovColor
-fovCircle.Filled = false
-fovCircle.Visible = true
-
-RunService.RenderStepped:Connect(function()
-    local size = camera.ViewportSize
-    fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
-    fovCircle.Radius = Settings.FOV_RADIUS
-end)
+    highlight.FillTransparency = getgenv().Settings.PlayerChamsFillTransparency
+    highlight.OutlineTransparency = getgenv().Settings.PlayerChamsOutlineTransparency
+end
 
 local function isValidTarget(part)
     if not (part and part.Parent and part:IsA("BasePart")) then return false end
@@ -72,12 +76,12 @@ local function isValidTarget(part)
     if not onScreen then return false end
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-    if dist > Settings.FOV_RADIUS then return false end
+    if dist > getgenv().Settings.FOV_RADIUS then return false end
     return true
 end
 
 local function canSee(part)
-    if not Settings.aimbotWallCheck then return true end
+    if not getgenv().Settings.aimbotWallCheck then return true end
     local origin = camera.CFrame.Position
     local direction = (part.Position - origin)
     local rayParams = RaycastParams.new()
@@ -103,7 +107,7 @@ local function getTargetPart()
         if model:IsA("Model") then
             local root = model:FindFirstChild("Root")
             if root then
-                for _, partName in ipairs(Settings.aimPartNames) do
+                for _, partName in ipairs(getgenv().Settings.aimPartNames) do
                     local aimPart = model:FindFirstChild(partName)
                     if aimPart and aimPart:IsA("BasePart") and isValidTarget(aimPart) and canSee(aimPart) then
                         local screenPos, _ = camera:WorldToViewportPoint(aimPart.Position)
@@ -122,14 +126,16 @@ local function getTargetPart()
 end
 
 local function aimAtTarget(dt)
-    if not Settings.aimbotEnabled or not aiming then return end
+    if not getgenv().Settings.aimbotEnabled or not aiming then return end
     local targetPart = getTargetPart()
     if not targetPart then return end
     local predictedPos = targetPart.Position
     local velocity = targetPart.AssemblyLinearVelocity or Vector3.new()
+
     if velocity.Magnitude > 0.05 then
-        predictedPos += velocity * Settings.prediction
+        predictedPos += velocity * getgenv().Settings.prediction
     end
+
     local screenPoint, onScreen = camera:WorldToViewportPoint(predictedPos)
     if not onScreen then return end
     local mousePos = UserInputService:GetMouseLocation()
@@ -140,10 +146,10 @@ local function aimAtTarget(dt)
         recoilTime += dt
 
         local distance = (camera.CFrame.Position - targetPart.Position).Magnitude
-        local distanceFactor = math.clamp(distance / Settings.referenceDistance, 1, 3)
+        local distanceFactor = math.clamp(distance / getgenv().Settings.referenceDistance, 1, 3)
 
-        local effectiveRecoilSpeed = Settings.recoilSpeed * distanceFactor * Settings.smoothness
-        local maxAllowedRecoil = math.clamp(Settings.maxRecoil * distanceFactor, Settings.maxRecoil, Settings.maxRecoil * 3)
+        local effectiveRecoilSpeed = getgenv().Settings.recoilSpeed * distanceFactor * getgenv().Settings.smoothness
+        local maxAllowedRecoil = math.clamp(getgenv().Settings.maxRecoil * distanceFactor, getgenv().Settings.maxRecoil, getgenv().Settings.maxRecoil * 3)
 
         local recoilOffset = math.clamp(recoilTime * effectiveRecoilSpeed, 0, maxAllowedRecoil)
 
@@ -155,7 +161,7 @@ local function aimAtTarget(dt)
     dx = math.clamp(dx, -100, 100)
     dy = math.clamp(dy, -100, 100)
 
-    mousemoverel(dx * Settings.smoothness, dy * Settings.smoothness)
+    mousemoverel(dx * getgenv().Settings.smoothness, dy * getgenv().Settings.smoothness)
 end
 
 local function triggerBot()
@@ -172,7 +178,7 @@ local function triggerBot()
     if result and result.Instance then
         local hitPartName = result.Instance.Name
         local canShoot = false
-        for _, partName in ipairs(Settings.triggerPartNames) do
+        for _, partName in ipairs(getgenv().Settings.triggerPartNames) do
             if hitPartName == partName then
                 canShoot = true
                 break
@@ -185,8 +191,8 @@ local function triggerBot()
                 hoverStartTime = now
             end
 
-            if now - hoverStartTime >= Settings.triggerbotDelayBeforeShooting then
-                if now - lastTriggerTime >= Settings.triggerbotDelayBetweenShots then
+            if now - hoverStartTime >= getgenv().Settings.triggerbotDelayBeforeShooting then
+                if now - lastTriggerTime >= getgenv().Settings.triggerbotDelayBetweenShots then
                     mouse1click()
                     lastTriggerTime = now
                 end
@@ -203,19 +209,62 @@ end
 
 local function setZoom()
     if zoomed then
-        camera.FieldOfView = originalFOV * Settings.ZoomAmplifier
+        camera.FieldOfView = originalFOV * getgenv().Settings.ZoomAmplifier
     else
         camera.FieldOfView = originalFOV
     end
 end
 
+local fovCircle = Drawing.new("Circle")
+fovCircle.Radius = getgenv().Settings.FOV_RADIUS
+fovCircle.Thickness = 2
+fovCircle.Transparency = getgenv().Settings.fovTransparency
+fovCircle.Color = getgenv().Settings.fovColor
+fovCircle.Filled = false
+fovCircle.Visible = true
+
 RunService.RenderStepped:Connect(function(dt)
+    local size = camera.ViewportSize
+    fovCircle.Position = Vector2.new(size.X / 2, size.Y / 2)
+    fovCircle.Radius = getgenv().Settings.FOV_RADIUS
+
     triggerBot()
     setZoom()
+
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model.Name == "Male" then
+            updatePlayerChams(model)
+        end
+    end
+
+    if getgenv().Settings.GunChamsEnabled then
+        for _, part in ipairs(worldModel:GetDescendants()) do
+            if part:IsA("MeshPart") then
+                if not originalProperties[part] then
+                    originalProperties[part] = {
+                        Color = part.Color,
+                        Material = part.Material,
+                    }
+                end
+                if part.Color ~= getgenv().Settings.GunChamsColor or part.Material ~= getgenv().Settings.GunChamsMaterial then
+                    part.Color = getgenv().Settings.GunChamsColor
+                    part.Material = getgenv().Settings.GunChamsMaterial
+                end
+            end
+        end
+    else
+        for part, props in pairs(originalProperties) do
+            if part and part.Parent then
+                part.Color = props.Color
+                part.Material = props.Material
+            end
+        end
+        originalProperties = {}
+    end
 end)
 
 camera:GetPropertyChangedSignal("FieldOfView"):Connect(function()
-    if zoomed and camera.FieldOfView ~= originalFOV * Settings.ZoomAmplifier then
+    if zoomed and camera.FieldOfView ~= originalFOV * getgenv().Settings.ZoomAmplifier then
         setZoom()
     end
 end)
@@ -224,7 +273,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
     if not gp then
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             mb1Held = true
-        elseif input.KeyCode == Settings.AimKey then
+        elseif input.KeyCode == getgenv().Settings.AimKey then
             aiming = not aiming
             notify("Aimbot: " .. (aiming and "ON" or "OFF"))
             if aiming then
@@ -235,10 +284,10 @@ UserInputService.InputBegan:Connect(function(input, gp)
                 mb1Held = false
                 recoilTime = 0
             end
-        elseif input.KeyCode == Settings.TriggerKey then
+        elseif input.KeyCode == getgenv().Settings.TriggerKey then
             triggerbotEnabled = not triggerbotEnabled
             notify("Triggerbot: " .. (triggerbotEnabled and "ON" or "OFF"))
-        elseif input.KeyCode == Settings.ZoomKey then
+        elseif input.KeyCode == getgenv().Settings.ZoomKey then
             zoomed = not zoomed
             setZoom()
         end
