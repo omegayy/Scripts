@@ -355,7 +355,7 @@ MovementGroupBox:AddLabel('Flight key'):AddKeyPicker('FlightKeyPicker', {
 })
 
 MovementGroupBox:AddToggle('Water Walk', {
-    Text = 'Walk On Water',
+    Text = 'Jesus walk',
     Default = false,
     Tooltip = 'lets you walk on water',
 
