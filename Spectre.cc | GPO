@@ -293,26 +293,29 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Walk on water
 task.spawn(function()
 	while true do
 		if walkWater then
-			local ocean=workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Ocean")
+			local ocean = workspace:FindFirstChild("Env") and workspace.Env:FindFirstChild("WaterStuff") and workspace.Env.WaterStuff:FindFirstChild("Ocean")
 			if ocean then
 				if not waterPlat then
-					waterPlat=Instance.new("Part")
-					waterPlat.Size=Vector3.new(10,1,10)
-					waterPlat.Transparency=1
-					waterPlat.Anchored=true
-					waterPlat.CanCollide=true
-					waterPlat.Name="WaterWalkPlatform"
-					waterPlat.Parent=workspace
+					waterPlat = Instance.new("Part")
+					waterPlat.Size = Vector3.new(10, 1, 10)
+					waterPlat.Transparency = 1
+					waterPlat.Anchored = true
+					waterPlat.CanCollide = true
+					waterPlat.Name = "WaterWalkPlatform"
+					waterPlat.Parent = workspace
 				end
-				local pos=RootPart.Position
-				waterPlat.CFrame=CFrame.new(pos.X,ocean.Position.Y+ocean.Size.Y,pos.Z)
+				local pos = RootPart.Position
+				-- Position platform exactly at water surface
+				waterPlat.CFrame = CFrame.new(pos.X, ocean.Position.Y + ocean.Size.Y/2, pos.Z)
 			end
 		else
-			if waterPlat then waterPlat:Destroy() waterPlat=nil end
+			if waterPlat then 
+				waterPlat:Destroy() 
+				waterPlat = nil 
+			end
 		end
 		task.wait(0.1)
 	end
