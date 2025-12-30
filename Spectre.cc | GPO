@@ -309,7 +309,7 @@ task.spawn(function()
 					waterPlat.Parent=workspace
 				end
 				local pos=RootPart.Position
-				waterPlat.CFrame=CFrame.new(pos.X,ocean.Position.Y+ocean.Size.Y/2+1,pos.Z)
+				waterPlat.CFrame=CFrame.new(pos.X,ocean.Position.Y+ocean.Size.Y/2+0.1,pos.Z)
 			end
 		else
 			if waterPlat then waterPlat:Destroy() waterPlat=nil end
