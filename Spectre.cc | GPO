@@ -474,7 +474,20 @@ end)
 
 local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
 
-MenuGroup:AddButton('Unload', function() Library:Unload() end)
+MenuGroup:AddButton({
+    Text = 'Unload',
+    Func = function()
+        Library:Unload()
+        fruitESP = false
+        chestESP = false
+        playerESP = false
+        flying = false
+        autoOpen = false
+        walkWater = false
+    end,
+    DoubleClick = false,
+    Tooltip = 'Unload'
+})
 MenuGroup:AddButton({
     Text = 'Rejoin',
     Func = function()
