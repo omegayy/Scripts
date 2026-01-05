@@ -10,15 +10,22 @@ local Camera = workspace.CurrentCamera
 
 -- Feature toggles
 local fruitESP = false
-local chestESP = false
+local chestESP = true -- global chest ESP toggle
 local playerESP = false
 local flying = false
 local flightSpeed = 79
-local autoOpen = false
+local autoOpen = true
 local walkWater = false
 local waterPlat
 local frameCount = 0
 local keys = {}
+
+-- Individual chest toggles
+local showCommonChest = true
+local showUncommonChest = true
+local showRareChest = true
+local showLegendaryChest = true
+local showMythicalChest = true
 
 -- Update character references
 local function newChar(c)
@@ -99,7 +106,7 @@ local function makeESP(mdl, part, lbl, color, enabledFunc, extraFunc, multi)
 		txt.Font = Enum.Font.GothamBold
 		txt.TextSize = 18
 		txt.TextScaled = false
-		txt.TextTruncate = Enum.TextTruncate.AtEnd
+		txt.TextTruncate = Enum.TextTruncate.None
 	end
 
 	RunService.RenderStepped:Connect(function()
@@ -189,24 +196,165 @@ local function scanFruits()
 	end
 end
 
--- Chest scanning
+-- =======================
+-- NEW CHEST ESP LOGIC
+-- =======================
 
-local function isChestModel(m)
-	if not m:IsA("Model") then return false end
-	if m.Parent ~= workspace:FindFirstChild("Effects") then return false end
-	local top = m:FindFirstChild("Top")
-	return top and top:IsA("Model")
+-- Chest definitions
+local CHEST_NAMES = {
+	["Meshes/UCC_Brown.002Weld"] = "Uncommon Chest",
+	["Meshes/bLUEchEST_Blue.001 (1)Weld"] = "Rare Chest",
+	["Meshes/ChestYes_Brown.001Weld"] = "Common Chest",
+	["Meshes/LegendaryChest3_Brown.003Weld"] = "Legendary Chest",
+	["Meshes/MythicalChest3_Cyan.001Weld"] = "Mythical Chest",
+}
+
+-- Store ESP'd chests
+local chestESPCache = {}
+local chestCache = {}
+
+-- Helper to get top-level model
+local function getTopLevelModel(inst)
+	local current = inst
+	local lastModel
+	while current and current ~= workspace do
+		if current:IsA("Model") then
+			lastModel = current
+		end
+		current = current.Parent
+	end
+	return lastModel
 end
 
-local function scanChests()
-	local effects = workspace:FindFirstChild("Effects")
-	if not effects then return end
-	for _, m in ipairs(effects:GetChildren()) do
-		if isChestModel(m) then
-			makeESP(m, getMain(m), "Chest", Color3.fromRGB(255,200,80), function() return chestESP end,function() return "Chest" end)
+-- Update or create Chest ESP
+local function updateChestESP()
+	for _, inst in ipairs(workspace:GetDescendants()) do
+		local chestType = CHEST_NAMES[inst.Name]
+		if chestType then
+			local typeKey = chestType:gsub(" Chest","")
+			local mdl = getTopLevelModel(inst)
+			if mdl then
+				local enabled = false
+				if typeKey == "Common" then enabled = showCommonChest end
+				if typeKey == "Uncommon" then enabled = showUncommonChest end
+				if typeKey == "Rare" then enabled = showRareChest end
+				if typeKey == "Legendary" then enabled = showLegendaryChest end
+				if typeKey == "Mythical" then enabled = showMythicalChest end
+
+				if not enabled then
+					-- Remove ESP
+					if chestESPCache[mdl] then
+						local highlight = mdl:FindFirstChild("Chest_Chams")
+						if highlight then highlight:Destroy() end
+						local gui = mdl:FindFirstChild("Chest_ESP")
+						if gui then gui:Destroy() end
+						chestESPCache[mdl] = nil
+					end
+				else
+					-- Add ESP
+					if not chestESPCache[mdl] then
+						chestESPCache[mdl] = true
+						local mainPart = getMain(mdl)
+						if mainPart then
+							makeESP(
+								mdl,
+								mainPart,
+								"Chest",
+								Color3.fromRGB(255,200,80),
+								function() return chestESP end,
+								function() return chestType end
+							)
+						end
+					end
+				end
+			end
 		end
 	end
 end
+
+-- Update auto-open chest cache
+local function updateChestCache()
+	chestCache = {}
+	for _, inst in ipairs(workspace:GetDescendants()) do
+		local chestType = CHEST_NAMES[inst.Name]
+		if chestType then
+			local typeKey = chestType:gsub(" Chest","")
+			local enabled = false
+			if typeKey == "Common" then enabled = showCommonChest end
+			if typeKey == "Uncommon" then enabled = showUncommonChest end
+			if typeKey == "Rare" then enabled = showRareChest end
+			if typeKey == "Legendary" then enabled = showLegendaryChest end
+			if typeKey == "Mythical" then enabled = showMythicalChest end
+
+			if enabled then
+				local mdl = getTopLevelModel(inst)
+				if mdl then
+					local mainPart = getMain(mdl)
+					if mainPart then
+						table.insert(chestCache, {model = mdl, part = mainPart})
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Initial scan
+updateChestESP()
+updateChestCache()
+
+-- Auto-update when new chests appear/disappear
+workspace.DescendantAdded:Connect(function(o)
+	task.wait()
+	if CHEST_NAMES[o.Name] then
+		updateChestESP()
+		updateChestCache()
+	end
+end)
+workspace.DescendantRemoving:Connect(function(o)
+	if CHEST_NAMES[o.Name] then
+		updateChestESP()
+		updateChestCache()
+	end
+end)
+
+-- Periodic chest update every 2 seconds
+task.spawn(function()
+	while true do
+		updateChestESP()
+		updateChestCache()
+		task.wait(2) -- 2 seconds interval
+	end
+end)
+
+
+-- Auto-open logic
+local fCounter = 0
+RunService.RenderStepped:Connect(function()
+	fCounter += 1
+	if fCounter % 3 ~= 0 then return end
+	if autoOpen and RootPart then
+		local nearest
+		local nDist = math.huge
+		for _, c in ipairs(chestCache) do
+			local d = (RootPart.Position - c.part.Position).Magnitude
+			if d <= 4 then
+				for _, p in ipairs(c.model:GetDescendants()) do
+					if p:IsA("ProximityPrompt") and p.Enabled then
+						local pd = (RootPart.Position - p.Parent.Position).Magnitude
+						if pd < nDist then
+							nDist = pd
+							nearest = p
+						end
+					end
+				end
+			end
+		end
+		if nearest then
+			fireproximityprompt(nearest, nearest.HoldDuration)
+		end
+	end
+end)
 
 -- Player scanning
 local function scanPlayers()
@@ -244,60 +392,14 @@ end
 -- Connect scanning
 RunService.RenderStepped:Connect(scanPlayers)
 scanFruits()
-scanChests()
 scanPlayers()
 
 workspace.DescendantAdded:Connect(function(o)
 	task.wait()
-	if o:IsA("Model") and o:FindFirstChild("FruitModel") then scanFruits()
-	elseif isChestModel(o) then scanChests() end
+	if o:IsA("Model") and o:FindFirstChild("FruitModel") then scanFruits() end
 end)
 Players.PlayerAdded:Connect(function(pl)
 	pl.CharacterAdded:Connect(scanPlayers)
-end)
-
--- Auto chest open
-local chestCache = {}
-local function updateChestCache()
-	chestCache = {}
-	local effects = workspace:FindFirstChild("Effects")
-	if not effects then return end
-	for _, m in ipairs(effects:GetChildren()) do
-		if isChestModel(m) then
-			local mainPart = getMain(m)
-			if mainPart then
-				table.insert(chestCache, {model = m, part = mainPart})
-			end
-		end
-	end
-end
-updateChestCache()
-workspace:FindFirstChild("Effects").ChildAdded:Connect(function(c) if isChestModel(c) then scanChests(); updateChestCache() end end)
-workspace:FindFirstChild("Effects").ChildRemoved:Connect(updateChestCache)
-
-local fCounter = 0
-RunService.RenderStepped:Connect(function()
-	fCounter += 1
-	if fCounter % 3 ~= 0 then return end
-	if autoOpen and RootPart then
-		local nearest
-		local nDist = math.huge
-		for _, c in ipairs(chestCache) do
-			local d = (RootPart.Position - c.part.Position).Magnitude
-			if d <= 4 then
-				for _, p in ipairs(c.model:GetDescendants()) do
-					if p:IsA("ProximityPrompt") and p.Enabled then
-						local pd = (RootPart.Position - p.Parent.Position).Magnitude
-						if pd < nDist then
-							nDist = pd
-							nearest = p
-						end
-					end
-				end
-			end
-		end
-		if nearest then fireproximityprompt(nearest, nearest.HoldDuration) end
-	end
 end)
 
 -- Walk on water
@@ -327,7 +429,6 @@ task.spawn(function()
 		task.wait(0.1)
 	end
 end)
-
 --[[ Ui Library]]
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
 
@@ -386,24 +487,6 @@ OtherGroupBox:AddToggle('Auto Chest', {
 
 local ESPGroupBox = Tabs.Visual:AddLeftGroupbox('Extra Sensory Perception')
 
-ESPGroupBox:AddToggle('Fruit Esp', {
-    Text = 'Toggle Fruit Esp',
-    Default = false,
-    Tooltip = 'Toggles fruit ESP on/off',
-
-    Callback = function(Value)
-        fruitESP = Value
-    end
-})
-ESPGroupBox:AddToggle('Chest Esp', {
-    Text = 'Toggle Chest Esp',
-    Default = false,
-    Tooltip = 'Toggles Chest ESP on/off',
-
-    Callback = function(Value)
-        chestESP = Value
-    end
-})
 
 ESPGroupBox:AddToggle('Player Esp', {
     Text = 'Toggle Player Esp',
@@ -415,6 +498,61 @@ ESPGroupBox:AddToggle('Player Esp', {
     end
 })
 
+local ChestESPGroupBox = Tabs.Visual:AddLeftGroupbox('Chest ESP')
+ChestESPGroupBox:AddToggle('Chest Esp', {
+    Text = 'Toggle Chest Esp',
+    Default = false,
+    Tooltip = 'Toggles Chest ESP on/off',
+
+    Callback = function(Value)
+        chestESP = Value
+    end
+})
+ChestESPGroupBox:AddToggle('Common Chest Esp', {
+    Text = 'Toggle Common Chests',
+    Default = true,
+    Tooltip = 'Toggles Common Chest ESP on/off',
+
+    Callback = function(Value)
+        showCommonChest = Value
+    end
+})
+ChestESPGroupBox:AddToggle('Uncommon Chest Esp', {
+    Text = 'Toggle Uncommon Chests',
+    Default = true,
+    Tooltip = 'Toggles Uncommon Chest ESP on/off',
+
+    Callback = function(Value)
+        showUncommonChest = Value
+    end
+})
+ChestESPGroupBox:AddToggle('Rare Chest Esp', {
+    Text = 'Toggle Rare Chests',
+    Default = true,
+    Tooltip = 'Toggles Rare Chest ESP on/off',
+
+    Callback = function(Value)
+        showRareChest = Value
+    end
+})
+ChestESPGroupBox:AddToggle('Legendary Chest Esp', {
+    Text = 'Toggle Legendary Chests',
+    Default = true,
+    Tooltip = 'Toggles Legendary Chest ESP on/off',
+
+    Callback = function(Value)
+        showLegendaryChest = Value
+    end
+})
+ChestESPGroupBox:AddToggle('Mythical Chest Esp', {
+    Text = 'Toggle Mythical Chests',
+    Default = true,
+    Tooltip = 'Toggles Mythical Chest ESP on/off',
+
+    Callback = function(Value)
+        showMythicalChest = Value
+    end
+})
 
     
 Library:SetWatermarkVisibility(true)
