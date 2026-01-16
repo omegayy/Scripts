@@ -1,11 +1,11 @@
 local placeId = game.PlaceId
 
 if placeId == 11424731604 then
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR"))()
 elseif placeId == 7465136166
-	or placeId == 3978370137
-	or placeId == 6811831486 then
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO.lua"))()
+    or placeId == 3978370137
+    or placeId == 6811831486 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO"))()
 end
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Lua%20part%20of%20bot.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Lua%20part%20of%20bot"))()
