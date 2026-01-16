@@ -1,0 +1,174 @@
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Correct way to get PlayerGui
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LoaderGui"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Create blur effect
+local Lighting = game:GetService("Lighting")
+local blurEffect = Instance.new("BlurEffect")
+blurEffect.Size = 0
+blurEffect.Parent = Lighting
+
+-- Background frame with semi-transparent overlay
+local background = Instance.new("Frame")
+background.Size = UDim2.new(1, 0, 1, 0)
+background.Position = UDim2.new(0, 0, 0, 0)
+background.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+background.BorderSizePixel = 0
+background.BackgroundTransparency = 0.2
+background.Parent = screenGui
+
+-- Add UIGradient for depth
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 30)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 15))
+}
+gradient.Rotation = 45
+gradient.Parent = background
+
+-- Main title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0, 400, 0, 100)
+title.Position = UDim2.new(0.5, -200, -0.2, 0)
+title.BackgroundTransparency = 1
+title.Text = "Spectre.cc"
+title.TextColor3 = Color3.fromRGB(138, 43, 226)
+title.TextSize = 48
+title.Font = Enum.Font.GothamBold
+title.TextTransparency = 1
+title.TextStrokeTransparency = 0.8
+title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+title.Parent = screenGui
+
+-- Subtitle
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(0, 400, 0, 30)
+subtitle.Position = UDim2.new(0.5, -200, 0.45, 0)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Initializing..."
+subtitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+subtitle.TextSize = 18
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextTransparency = 1
+subtitle.Parent = screenGui
+
+-- Loading bar background
+local barBackground = Instance.new("Frame")
+barBackground.Size = UDim2.new(0, 400, 0, 6)
+barBackground.Position = UDim2.new(0.5, -200, 0.55, 0)
+barBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+barBackground.BorderSizePixel = 0
+barBackground.BackgroundTransparency = 1
+barBackground.Parent = screenGui
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 3)
+barCorner.Parent = barBackground
+
+-- Loading bar fill
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+barFill.BorderSizePixel = 0
+barFill.Parent = barBackground
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 3)
+fillCorner.Parent = barFill
+
+-- Add glow effect to bar
+local barGlow = Instance.new("UIGradient")
+barGlow.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 80, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
+}
+barGlow.Parent = barFill
+
+-- Percentage text
+local percentText = Instance.new("TextLabel")
+percentText.Size = UDim2.new(0, 400, 0, 25)
+percentText.Position = UDim2.new(0.5, -200, 0.58, 0)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(150, 150, 150)
+percentText.TextSize = 14
+percentText.Font = Enum.Font.Gotham
+percentText.TextTransparency = 1
+percentText.Parent = screenGui
+
+-- Blur in (increased size for more coverage)
+TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 30}):Play()
+
+-- Title slide in
+task.wait(0.2)
+local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+TweenService:Create(title, tweenInfo, {
+    Position = UDim2.new(0.5, -200, 0.35, 0),
+    TextTransparency = 0
+}):Play()
+
+-- Fade in other elements
+task.wait(0.3)
+TweenService:Create(subtitle, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+TweenService:Create(barBackground, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+TweenService:Create(percentText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+
+-- Loading bar animation
+task.wait(0.5)
+local loadingSteps = {
+    {progress = 0.3, text = "Loading configuration...", duration = 0.8},
+    {progress = 0.6, text = "Connecting to services...", duration = 1.0},
+    {progress = 0.9, text = "Finalizing setup...", duration = 0.7},
+    {progress = 1.0, text = "Complete!", duration = 0.5}
+}
+
+for _, step in ipairs(loadingSteps) do
+    subtitle.Text = step.text
+    TweenService:Create(barFill, TweenInfo.new(step.duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(step.progress, 0, 1, 0)
+    }):Play()
+    
+    local startPercent = tonumber(percentText.Text:match("%d+")) or 0
+    local targetPercent = math.floor(step.progress * 100)
+    
+    for i = startPercent, targetPercent do
+        percentText.Text = i .. "%"
+        task.wait(step.duration / math.max(1, targetPercent - startPercent))
+    end
+end
+
+task.wait(0.5)
+
+-- Execute scripts
+local placeId = game.PlaceId
+if placeId == 11424731604 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR"))()
+elseif placeId == 7465136166 or placeId == 3978370137 or placeId == 6811831486 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO"))()
+end
+loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Lua%20part%20of%20bot"))()
+
+-- Fade out
+task.wait(0.3)
+TweenService:Create(title, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+TweenService:Create(subtitle, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+TweenService:Create(barBackground, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(barFill, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(percentText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+TweenService:Create(blurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
+
+task.wait(0.5)
+screenGui:Destroy()
+blurEffect:Destroy()
