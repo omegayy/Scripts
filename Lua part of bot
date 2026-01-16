@@ -1,0 +1,292 @@
+-- Services
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+
+-- CONFIGURATION
+local SERVER_URL = "https://discord-roblox-bot-z3hc.onrender.com"
+local CHECK_INTERVAL = 3
+local MAX_RETRIES = 3
+
+-- State management
+local localPlayer = Players.LocalPlayer
+local playerId = tostring(localPlayer.UserId)
+local sessionId = HttpService:GenerateGUID(false)
+local isRunning = true
+local isChecking = false
+local retryCount = 0
+local lastSuccessfulCheck = 0
+local connectionActive = true
+local placeId = tostring(game.PlaceId)
+local jobId = tostring(game.JobId)
+
+-- Safe HTTP request
+local function safeHttpRequest(url)
+    local success, result = pcall(function()
+        return game:HttpGetAsync(url)
+    end)
+    
+    if success then
+        return result
+    else
+        return nil
+    end
+end
+
+-- Check for commands from server
+local function checkForCommands()
+    if isChecking or not connectionActive then return end
+    isChecking = true
+    
+    -- URL encode parameters
+    local username = localPlayer.Name:gsub(" ", "%%20")
+    local displayName = localPlayer.DisplayName:gsub(" ", "%%20")
+    
+    local checkUrl = string.format(
+        "%s/check/%s?username=%s&displayname=%s&session=%s&placeid=%s&jobid=%s",
+        SERVER_URL,
+        playerId,
+        username,
+        displayName,
+        sessionId,
+        placeId,
+        jobId
+    )
+    
+    local response = safeHttpRequest(checkUrl)
+    
+    if response then
+        retryCount = 0
+        lastSuccessfulCheck = tick()
+        
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(response)
+        end)
+        
+        if success and data then
+            if data.has_command then
+                local command = data.command
+                local args = data.args or ""
+                
+                -- Execute command
+                if command == "kick" then
+                    localPlayer:Kick("Kicked by admin")
+                    
+elseif command == "freeze" then
+    local character = localPlayer.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.Anchored = true
+        end
+    end
+
+    -- Handle respawn
+    localPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5) -- small delay to ensure HRP exists
+        local newRoot = newChar:WaitForChild("HumanoidRootPart")
+        if newRoot then
+            newRoot.Anchored = true
+        end
+    end)
+
+elseif command == "unfreeze" then
+    local character = localPlayer.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.Anchored = false
+        end
+    end
+
+    -- Handle respawn unfreeze
+    localPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5)
+        local newRoot = newChar:WaitForChild("HumanoidRootPart")
+        if newRoot then
+            newRoot.Anchored = false
+        end
+    end)
+ 
+                elseif command == "join" and args ~= "" then
+                    local placeIdStr, jobIdStr = args:match("(%d+)%s+(%S+)")
+                    if placeIdStr and jobIdStr then
+                        local placeIdNum = tonumber(placeIdStr)
+                        
+                        if placeIdNum then
+                            TeleportService:TeleportToPlaceInstance(
+                                placeIdNum,
+                                jobIdStr,
+                                localPlayer
+                            )
+                        end
+                    end
+                    
+                elseif command == "orbit" and args ~= "" then
+                    local targetId = args
+                    local targetPlayer = Players:GetPlayerByUserId(tonumber(targetId))
+                    
+                    if targetPlayer and targetPlayer.Character then
+                        -- Stop any existing orbit
+                        if _G.AdminOrbitConnection then
+                            _G.AdminOrbitConnection:Disconnect()
+                        end
+                        
+                        -- Start orbiting
+                        _G.AdminOrbitConnection = RunService.Heartbeat:Connect(function()
+                            if not targetPlayer or not targetPlayer.Character or not localPlayer.Character then
+                                if _G.AdminOrbitConnection then
+                                    _G.AdminOrbitConnection:Disconnect()
+                                    _G.AdminOrbitConnection = nil
+                                end
+                                return
+                            end
+                            
+                            local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            local localRoot = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            
+                            if targetRoot and localRoot then
+                                local orbitDistance = 10
+                                local orbitSpeed = 5
+                                local time = tick() * orbitSpeed
+                                
+                                local orbitPosition = targetRoot.Position + Vector3.new(
+                                    math.cos(time) * orbitDistance,
+                                    5,
+                                    math.sin(time) * orbitDistance
+                                )
+                                
+                                localRoot.CFrame = CFrame.new(orbitPosition, targetRoot.Position)
+                            end
+                        end)
+                    end
+                    
+                elseif command == "unorbit" then
+                    if _G.AdminOrbitConnection then
+                        _G.AdminOrbitConnection:Disconnect()
+                        _G.AdminOrbitConnection = nil
+                    end
+                end
+            end
+        end
+    else
+        -- Connection failed
+        retryCount = retryCount + 1
+        
+        if retryCount >= MAX_RETRIES then
+            connectionActive = false
+        end
+    end
+    
+    isChecking = false
+end
+
+-- Send check-in without checking for commands
+local function sendCheckin()
+    if not connectionActive then return end
+    
+    local checkinUrl = string.format("%s/checkin/%s?username=%s&displayname=%s", 
+        SERVER_URL,
+        playerId,
+        localPlayer.Name:gsub(" ", "%%20"),
+        localPlayer.DisplayName:gsub(" ", "%%20")
+    )
+    
+    pcall(function()
+        safeHttpRequest(checkinUrl)
+    end)
+end
+
+-- Send logout request
+local function sendLogout()
+    if not connectionActive then return end
+    
+    connectionActive = false
+    
+    local logoutUrl = string.format("%s/logout/%s?session=%s", 
+        SERVER_URL, 
+        playerId,
+        sessionId
+    )
+    
+    pcall(function()
+        safeHttpRequest(logoutUrl)
+    end)
+end
+
+-- Ensure character exists
+local function ensureCharacter()
+    if not localPlayer.Character then
+        localPlayer.CharacterAdded:Wait()
+        task.wait(1)
+        return false
+    end
+    return true
+end
+
+-- Main check loop
+local function startCheckLoop()
+    -- Initial delay
+    task.wait(3)
+    
+    -- Initial check
+    checkForCommands()
+    
+    -- Main loop
+    while connectionActive do
+        if ensureCharacter() then
+            checkForCommands()
+        end
+        
+        -- Dynamic interval based on connection status
+        local interval = CHECK_INTERVAL
+        if retryCount > 0 then
+            interval = math.min(30, CHECK_INTERVAL * (retryCount + 1))
+        end
+        
+        -- Send heartbeat checkin if no command received recently
+        if tick() - lastSuccessfulCheck > 15 then
+            sendCheckin()
+        end
+        
+        task.wait(interval)
+    end
+end
+
+-- Handle cleanup
+local function cleanup()
+    if not isRunning then return end
+    isRunning = false
+    connectionActive = false
+    
+    -- Stop orbit if active
+    if _G.AdminOrbitConnection then
+        _G.AdminOrbitConnection:Disconnect()
+        _G.AdminOrbitConnection = nil
+    end
+    
+    -- Send logout
+    sendLogout()
+end
+
+-- Setup event handlers
+localPlayer.AncestryChanged:Connect(function(_, parent)
+    if parent == nil then
+        cleanup()
+    end
+end)
+
+-- Backup cleanup via PlayerRemoving
+Players.PlayerRemoving:Connect(function(player)
+    if player == localPlayer then
+        cleanup()
+    end
+end)
+
+-- Start the system (completely silent)
+task.spawn(function()
+    pcall(function()
+        startCheckLoop()
+    end)
+end)
