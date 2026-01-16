@@ -1,6 +1,6 @@
 if game.PlaceId == 11424731604 then
 loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR"))()
-elseif game.PlaceId == 7465136166 or game.PlaceId == 3978370137 then
+elseif game.PlaceId == 7465136166 or game.PlaceId == 3978370137 then or game.PlaceId == 6811831486 then
 loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO"))()
 end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Essentials/refs/heads/main/Spectre.cc%20%7C%20Admin%20Module?token=GHSAT0AAAAAADNVSCFXBB6CMNSXHSUNE2EE2LKTVZA"))()
