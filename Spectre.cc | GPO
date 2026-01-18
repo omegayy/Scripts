@@ -361,7 +361,7 @@ MovementGroupBox:AddSlider('FlightSpeed', {
     Text = 'Flight Speed',
     Default = 79,
     Min = 0,
-    Max = 500,
+    Max = 400,
     Rounding = 1,
     Compact = false,
 
