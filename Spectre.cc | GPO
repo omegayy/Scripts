@@ -359,9 +359,9 @@ MovementGroupBox:AddLabel('Flight key'):AddKeyPicker('FlightKeyPicker', {
 
 MovementGroupBox:AddSlider('FlightSpeed', {
     Text = 'Flight Speed',
-    Default = 79,
+    Default = 100,
     Min = 0,
-    Max = 400,
+    Max = 350,
     Rounding = 0,
     Compact = false,
 
