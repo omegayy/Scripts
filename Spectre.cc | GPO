@@ -359,14 +359,14 @@ MovementGroupBox:AddLabel('Flight key'):AddKeyPicker('FlightKeyPicker', {
 
 MovementGroupBox:AddSlider('FlightSpeed', {
     Text = 'Flight Speed',
-    Default = 59,
+    Default = 79,
     Min = 0,
     Max = 500,
     Rounding = 1,
     Compact = false,
 
     Callback = function(Value)
-        FlightSpeed = Value
+        flightSpeed = Value
     end
 })
 MovementGroupBox:AddToggle('Water Walk', {
