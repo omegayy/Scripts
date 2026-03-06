@@ -1,24 +1,16 @@
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
--- Correct way to get PlayerGui
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "LoaderGui"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
-
--- Create blur effect
 local Lighting = game:GetService("Lighting")
 local blurEffect = Instance.new("BlurEffect")
 blurEffect.Size = 0
 blurEffect.Parent = Lighting
-
--- Background frame with semi-transparent overlay
 local background = Instance.new("Frame")
 background.Size = UDim2.new(1, 0, 1, 0)
 background.Position = UDim2.new(0, 0, 0, 0)
@@ -26,8 +18,6 @@ background.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 background.BorderSizePixel = 0
 background.BackgroundTransparency = 0.2
 background.Parent = screenGui
-
--- Add UIGradient for depth
 local gradient = Instance.new("UIGradient")
 gradient.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 30)),
@@ -156,6 +146,9 @@ if placeId == 11424731604 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR"))()
 elseif placeId == 7465136166 or placeId == 3978370137 or placeId == 6811831486 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO"))()
+elseif placeId == 14890802310 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20Bizzare%20Lineage"))()
+
 end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Lua%20part%20of%20bot"))()
 
