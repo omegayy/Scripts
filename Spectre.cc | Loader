@@ -146,7 +146,7 @@ if placeId == 11424731604 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.CC%20%7C%20GPO%20BR"))()
 elseif placeId == 7465136166 or placeId == 3978370137 or placeId == 6811831486 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20GPO"))()
-elseif placeId == 14890802310 then
+elseif placeId == 14890802310 or placeId == 74747090658891 then
  loadstring(game:HttpGet("https://raw.githubusercontent.com/omegayy/Scripts/refs/heads/main/Spectre.cc%20%7C%20Bizzare%20Lineage"))()
 
 end
